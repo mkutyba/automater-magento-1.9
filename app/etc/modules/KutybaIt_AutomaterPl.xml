@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <KutybaIt_AutomaterPl>
+            <active>true</active>
+            <codePool>community</codePool>
+        </KutybaIt_AutomaterPl>
+    </modules>
+</config>

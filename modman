@@ -1,0 +1,9 @@
+app/code/community/KutybaIt/AutomaterPl                    app/code/community/KutybaIt/AutomaterPl                   
+app/etc/modules/KutybaIt_AutomaterPl.xml                   app/etc/modules/KutybaIt_AutomaterPl.xml                  
+app/locale/pl_PL/KutybaIt_AutomaterPl.csv                  app/locale/pl_PL/KutybaIt_AutomaterPl.csv                 
+lib/Automater-PHP-SDK/README.md                            lib/Automater-PHP-SDK/README.md                           
+lib/Automater-PHP-SDK/autoload.php                         lib/Automater-PHP-SDK/autoload.php                        
+lib/Automater-PHP-SDK/src/Automater.php                    lib/Automater-PHP-SDK/src/Automater.php                   
+lib/Automater-PHP-SDK/src/Exception/AutomaterException.php lib/Automater-PHP-SDK/src/Exception/AutomaterException.php
+lib/Automater-PHP-SDK/src/Exception/NotFoundException.php  lib/Automater-PHP-SDK/src/Exception/NotFoundException.php 
+lib/Automater-PHP-SDK/src/Exception/TimeoutException.php   lib/Automater-PHP-SDK/src/Exception/TimeoutException.php  
