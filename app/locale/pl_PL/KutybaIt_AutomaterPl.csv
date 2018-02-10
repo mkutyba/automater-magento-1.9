@@ -5,7 +5,7 @@
 "API Key","API Key"
 "API Secret","API Secret"
 "Product ID in Automater","ID Produktu w Automater"
-"No codes for product: %s [%s]","Brak kodów dla produktu: %s [%s]"
+"Product not managed by automater: %s [%s]","Produkt nie jest zarządzany przez automater: %s [%s]"
 "Invalid quantity of product: %s [%s]","Nieprawidłowa ilość dla produktu: %s [%s]"
 "No codes for ID: %s","Brak kodów dla ID: %s"
 "Not enough codes for ID, sent less: %s","Niewystarczająca liczba kodów dla ID, wysłano mniej: %s"

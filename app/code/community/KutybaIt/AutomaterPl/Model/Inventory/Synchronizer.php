@@ -2,6 +2,9 @@
 
 class KutybaIt_AutomaterPl_Model_Inventory_Synchronizer
 {
+    /**
+     * @throws Exception
+     */
     public function synchronizeInventory()
     {
         if (!Mage::helper("automaterpl")->isActive()) {
@@ -14,7 +17,7 @@ class KutybaIt_AutomaterPl_Model_Inventory_Synchronizer
         foreach ($collection as $product) {
             if ($automaterProductId = $product->getAutomaterProductId()) {
                 $qty = $automaterStocks[$automaterProductId];
-                if (!isset($qty)) {
+                if ($qty === null) {
                     continue;
                 }
                 $this->_updateProductStock($product->getId(), $qty);
@@ -22,6 +25,9 @@ class KutybaIt_AutomaterPl_Model_Inventory_Synchronizer
         }
     }
 
+    /**
+     * @return Mage_Catalog_Model_Resource_Product_Collection
+     */
     private function _prepareProductsCollection()
     {
         $collection = Mage::getModel("catalog/product")->getCollection()
@@ -29,23 +35,31 @@ class KutybaIt_AutomaterPl_Model_Inventory_Synchronizer
         return $collection;
     }
 
+    /**
+     * @return array
+     */
     private function _fetchAutomaterStocks()
     {
         $automater = Mage::getModel('automaterpl/automater_proxy');
 
         $automaterProducts = $automater->getAllProducts();
         $automaterStocks = [];
-        if (is_array($automaterProducts)) {
-            $automaterStocks = array_combine(array_column($automaterProducts, "id"), array_column($automaterProducts, "available"));
+        foreach ($automaterProducts as $product) {
+            $automaterStocks[$product->getId()] = $product->getAvailableCodes();
         }
 
         return $automaterStocks;
     }
 
+    /**
+     * @param string $productId
+     * @param string $qty
+     * @throws Exception
+     */
     private function _updateProductStock($productId, $qty)
     {
         $stockItem = Mage::getModel('cataloginventory/stock_item')->loadByProduct($productId);
-        if ($stockItem->getId() and $stockItem->getManageStock()) {
+        if ($stockItem->getId() && $stockItem->getManageStock()) {
             $stockItem->setQty($qty);
             $stockItem->setIsInStock((int)($qty > 0));
             $stockItem->save();
