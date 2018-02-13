@@ -1,12 +1,27 @@
 <?php
 
+require_once Mage::getBaseDir('lib') . '/kutybait-AutomaterPl/autoload.php';
+
+use AutomaterSDK\Exception\ApiException;
+use AutomaterSDK\Exception\NotFoundException;
+use AutomaterSDK\Exception\TooManyRequestsException;
+use AutomaterSDK\Exception\UnauthorizedException;
+use AutomaterSDK\Response\PaymentResponse;
+use AutomaterSDK\Response\TransactionResponse;
+
 class KutybaIt_AutomaterPl_Model_Observer
 {
     private $_automater;
 
-    public function createTransaction(Varien_Event_Observer $observer)
+    /**
+     * @param Varien_Event_Observer $observer
+     * @throws Exception
+     * @throws Mage_Core_Exception
+     * @throws Mage_Core_Model_Store_Exception
+     */
+    public function createTransaction($observer)
     {
-        if (!Mage::helper("automaterpl")->isActive()) {
+        if (!Mage::helper('automaterpl')->isActive()) {
             return;
         }
 
@@ -15,31 +30,31 @@ class KutybaIt_AutomaterPl_Model_Observer
 
         $items = $order->getAllVisibleItems();
         $result = [];
-        $result[] = Mage::helper("automaterpl")->__("Automater.pl codes:");
-
-        try {
-            $this->_automater = Mage::getModel('automaterpl/automater_proxy');
-        } catch (Exception $e) {
-            $result[] = $e->getMessage();
-            $this->_setOrderStatus($result, $order);
-            return;
-        }
+        $result[] = Mage::helper('automaterpl')->__('Automater.pl codes:');
 
         $products = $this->_validateItems($items, $result);
-
-        $this->_validateProductsStock($products, $result);
 
         $this->_createAutomaterTransaction($products, $order, $result);
 
         $this->_setOrderStatus($result, $order);
     }
 
+    /**
+     * @param string[] $status
+     * @param Mage_Sales_Model_Order $order
+     * @throws Exception
+     */
     private function _setOrderStatus($status, $order)
     {
-        $order->addStatusHistoryComment(implode("<br>", $status));
+        $order->addStatusHistoryComment(implode('<br>', $status));
         $order->save();
     }
 
+    /**
+     * @param Mage_Sales_Model_Order_Item[] $items
+     * @param string[] $result
+     * @return array
+     */
     private function _validateItems($items, &$result)
     {
         $products = [];
@@ -48,20 +63,22 @@ class KutybaIt_AutomaterPl_Model_Observer
             try {
                 $automaterProductId = Mage::getModel('catalog/product')->loadByAttribute('sku', $item->getSku())->getAutomaterProductId();
                 if (!$automaterProductId) {
-                    $result[] = Mage::helper("automaterpl")->__("No codes for product: %s [%s]", $item->getName(), $item->getSku());
+                    $result[] = Mage::helper('automaterpl')->__('Product not managed by automater: %s [%s]', $item->getName(), $item->getSku());
                     continue;
                 }
 
-                $qty = intval($item->getQtyOrdered());
+                $qty = (int)$item->getQtyOrdered();
                 if (is_nan($qty) || $qty <= 0) {
-                    $result[] = Mage::helper("automaterpl")->__("Invalid quantity of product: %s [%s]", $item->getName(), $item->getSku());
+                    $result[] = Mage::helper('automaterpl')->__('Invalid quantity of product: %s [%s]', $item->getName(), $item->getSku());
                     continue;
                 }
 
                 if (!isset($products[$automaterProductId])) {
-                    $products[$automaterProductId] = 0;
+                    $products[$automaterProductId]['qty'] = 0;
+                    $products[$automaterProductId]['price'] = $item->getPrice();
+                    $products[$automaterProductId]['currency'] = Mage::app()->getStore()->getCurrentCurrencyCode();
                 }
-                $products[$automaterProductId] = $products[$automaterProductId] + $qty;
+                $products[$automaterProductId]['qty'] += $qty;
             } catch (Exception $e) {
                 $result[] = $e->getMessage() . Mage::helper("automaterpl")->__(": %s [%s]", $item->getName(), $item->getSku());
             }
@@ -70,57 +87,51 @@ class KutybaIt_AutomaterPl_Model_Observer
         return $products;
     }
 
-    private function _validateProductsStock(&$products, &$result)
-    {
-        foreach ($products as $automaterProductId => $qty) {
-            try {
-                if (!$qty) {
-                    $result[] = Mage::helper("automaterpl")->__("No codes for ID: %s", $automaterProductId);
-                    unset($products[$automaterProductId]);
-                    continue;
-                }
-                $codesCount = $this->_automater->getCountForProduct($automaterProductId);
-                if (!$codesCount) {
-                    $result[] = Mage::helper("automaterpl")->__("No codes for ID: %s", $automaterProductId);
-                    unset($products[$automaterProductId]);
-                    continue;
-                }
-                if ($codesCount < $qty) {
-                    $result[] = Mage::helper("automaterpl")->__("Not enough codes for ID, sent less: %s", $automaterProductId);
-                    $products[$automaterProductId] = $codesCount;
-                }
-            } catch (Exception $e) {
-                $result[] = $e->getMessage() . Mage::helper("automaterpl")->__(": %s", $automaterProductId);
-                unset($products[$automaterProductId]);
-            }
-        }
-    }
-
+    /**
+     * @param array $products
+     * @param Mage_Sales_Model_Order $order
+     * @param string[] $result
+     * @throws Mage_Core_Exception
+     * @throws Mage_Core_Model_Store_Exception
+     */
     private function _createAutomaterTransaction($products, $order, &$result)
     {
-        if (sizeof($products)) {
+        if (count($products)) {
+            $email = $order->getBillingAddress()->getEmail();
+            $phone = $order->getBillingAddress()->getTelephone();
+            $label = Mage::helper('automaterpl')->__('Order from %s, id: #%s', Mage::app()->getStore()->getBaseUrl(), $order->getIncrementId());
+
             try {
-                $response = $this->_automater->createTransaction(
-                    $products, $order->getCustomerEmail(),
-                    $order->getBillingAddress()->getTelephone(),
-                    Mage::helper("automaterpl")->__("Order from %s, id: #%s", Mage::app()->getStore()->getBaseUrl(), $order->getIncrementId())
-                );
-                if ($response['code'] == '200') {
-                    if ($automaterCartId = $response['cart_id']) {
-                        $order->setAutomaterplCartId($automaterCartId);
-                        $order->save();
-                        $result[] = Mage::helper("automaterpl")->__("Created cart number: %s", $automaterCartId);
-                    }
+                /** @var TransactionResponse $response */
+                $this->_automater = Mage::getModel('automaterpl/automater_proxy');
+                $response = $this->_automater->createTransaction($products, $email, $phone, $label);
+                if ($response && $automaterCartId = $response->getCartId()) {
+                    $order->setAutomaterplCartId($automaterCartId);
+                    $order->save();
+                    $result[] = Mage::helper('automaterpl')->__('Created cart number: %s', $automaterCartId);
                 }
+            } catch (UnauthorizedException $exception) {
+                $this->handleException($result, 'Invalid API key');
+            } catch (TooManyRequestsException $e) {
+                $this->handleException($result, 'Too many requests to Automater: ' . $e->getMessage());
+            } catch (NotFoundException $e) {
+                $this->handleException($result, 'Not found - invalid params');
+            } catch (ApiException $e) {
+                $this->handleException($result, $e->getMessage());
             } catch (Exception $e) {
-                $result[] = $e->getMessage();
+                $this->handleException($result, $e->getMessage());
             }
         }
     }
 
-    public function payTransaction(Varien_Event_Observer $observer)
+    /**
+     * @param Varien_Event_Observer $observer
+     * @throws Exception
+     * @throws Mage_Core_Exception
+     */
+    public function payTransaction($observer)
     {
-        if (!Mage::helper("automaterpl")->isActive()) {
+        if (!Mage::helper('automaterpl')->isActive()) {
             return;
         }
 
@@ -129,25 +140,46 @@ class KutybaIt_AutomaterPl_Model_Observer
         $order = $invoice->getOrder();
 
         $result = [];
-        $result[] = Mage::helper("automaterpl")->__("Automater.pl payment:");
+        $result[] = Mage::helper('automaterpl')->__('Automater.pl payment:');
 
         $automaterCartId = $order->getAutomaterplCartId();
         if (!$automaterCartId) {
             return;
         }
 
+        $paymentId = $order->getIncrementId();
+        $amount = $order->getSubtotal();
+        $description = $order->getPayment()->getMethodInstance()->getTitle();
+
         try {
+            /** @var PaymentResponse $response */
             $this->_automater = Mage::getModel('automaterpl/automater_proxy');
-            $response = $this->_automater->createPayment($automaterCartId, $order->getIncrementId(), $order->getSubtotalInclTax());
-            if ($response['code'] == '200') {
-                $result[] = Mage::helper("automaterpl")->__("Paid successfully: %s", $automaterCartId);
+            $response = $this->_automater->createPayment($automaterCartId, $paymentId, $amount, $description);
+            if ($response) {
+                $result[] = Mage::helper('automaterpl')->__('Paid successfully: %s', $automaterCartId);
             }
-        } catch (Exception $e) {
-            $result[] = $e->getMessage();
-            $this->_setOrderStatus($result, $order);
-            return;
+        } catch (UnauthorizedException $exception) {
+            $this->handleException($result, 'Invalid API key');
+        } catch (TooManyRequestsException $e) {
+            $this->handleException($result, 'Too many requests to Automater: ' . $e->getMessage());
+        } catch (NotFoundException $e) {
+            $this->handleException($result, 'Not found - invalid params');
+        } catch (ApiException $e) {
+            $this->handleException($result, $e->getMessage());
+        } catch (Mage_Core_Model_Store_Exception $e) {
+            $this->handleException($result, $e->getMessage());
         }
 
         $this->_setOrderStatus($result, $order);
+    }
+
+    /**
+     * @param array $result
+     * @param string $exceptionMessage
+     */
+    protected function handleException(array &$result, $exceptionMessage)
+    {
+        Mage::logException(new Exception('Automater.pl: ' . $exceptionMessage));
+        $result[] = 'Automater.pl: ' . $exceptionMessage;
     }
 }

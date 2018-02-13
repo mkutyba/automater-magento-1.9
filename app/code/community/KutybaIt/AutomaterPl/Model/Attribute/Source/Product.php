@@ -1,15 +1,15 @@
 <?php
 
+use AutomaterSDK\Response\Entity\Product;
+
 class KutybaIt_AutomaterPl_Model_Attribute_Source_Product extends Mage_Eav_Model_Entity_Attribute_Source_Abstract
 {
     /**
-     * Retrieve All options
-     *
      * @return array
      */
     public function getAllOptions()
     {
-        if (is_null($this->_options)) {
+        if ($this->_options === null) {
             $this->_options = [];
             $this->_options[] = [
                 'label' => Mage::helper('adminhtml')->__('-- Please Select --'),
@@ -29,15 +29,16 @@ class KutybaIt_AutomaterPl_Model_Attribute_Source_Product extends Mage_Eav_Model
         return $this->_options;
     }
 
+    /**
+     * @param Product[] $products
+     */
     private function _transformProductsToOptions($products)
     {
-        if (is_array($products)) {
-            foreach ($products as $product) {
-                $this->_options[] = [
-                    'label' => $product['name'],
-                    'value' => $product['id'],
-                ];
-            }
+        foreach ($products as $product) {
+            $this->_options[] = [
+                'label' => $product->getName(),
+                'value' => $product->getId(),
+            ];
         }
     }
 }

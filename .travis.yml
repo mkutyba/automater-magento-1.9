@@ -1,0 +1,13 @@
+language: php
+php:
+  - 7.1
+script: ''
+before_deploy: bash build.sh
+deploy:
+  provider: releases
+  api_key:
+    secure: niu0u2mY1+x1hEmzsbzMOoR5nY+hpY87iN8clTBDlxYkOBwM0tNSWy1kacmp6RWDzUR0xusYk4xwTAmn2/mR0MpOOSgtXPPvKfZGDsObvfceQBdBFAFNfKxEz/oPRhPbbqFh7Cu+hGIAnNEzJfxtzMHllsJYa7KGQytum4XF5ly5EpWOjcPfRVHRu6SdLPDjD6CeDQcOkB+ZrmV+iUrUXwn9+CItiijGZIh62AY9usn0w8uOHgNRRtxc31jsJzmj0Q2/bDWuzHmw018i3ZfPxKljfrrBf7TcJuaj4dg8ntok7uSZ8RLWSnn36Ai8ByJOeAT887HbS9MQ2tQ0VVLbeu3VhAmHvhQ7HCB7TrUHpdcqcu492tK+9KGWo0uJtxCduxhv2Uo2qMes79OD70uVdRRp9iVx3NN3H++h/Rqi6hQdPjJXvcIqt2+WsxT/1SqTgO4cUY2TctshZS0XvX4a3iLGl/PFWBetzmc/Nwp2NozMLsAPedB8Adpeb3yqOT1vszejeny/cRIoLzy6trpAbw7lEEVAOo02Pcm6Nn400hSEsb5OFdebgVvySGF7BiuwVhMfF+pE6LHEPV+18Mi3QqYLqdpk9UvR1CBEQXbmEFZREaxSZsbvUjZTpT8d43Z0PK/+EdexHcOLrU2FVQIPcTXt67aDGGDUjOuVdQAWZd0=
+  file: automater-pl.zip
+  skip_cleanup: true
+  on:
+    tags: true

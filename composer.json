@@ -1,14 +1,21 @@
 {
-    "name": "kutybait/AutomaterPl",
-    "version": "0.1.3",
-    "type": "magento-module",
-    "authors": [
-        {
-            "name": "Mateusz Kutyba",
-            "email": "mateusz@kutyba.it"
-        }
-    ],
-    "require": {
-        "magento-hackathon/magento-composer-installer": "*"
+  "name": "kutybait/AutomaterPl",
+  "version": "0.2.0",
+  "type": "magento-module",
+  "authors": [
+    {
+      "name": "Mateusz Kutyba",
+      "email": "mateusz@kutyba.it"
     }
+  ],
+  "require": {
+    "magento-hackathon/magento-composer-installer": "*",
+    "automater-pl/rest-php-sdk": "^0.1.2"
+  },
+  "extra": {
+    "magento-root-dir": "root"
+  },
+  "config": {
+    "vendor-dir": "lib/kutybait-AutomaterPl"
+  }
 }
